@@ -16,6 +16,9 @@
 
 package com.alibaba.cloud.ai.example.dcg;
 
+import lombok.extern.slf4j.Slf4j;
+import org.apache.ibatis.annotations.Mapper;
+import org.mybatis.spring.annotation.MapperScan;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.memory.ChatMemory;
@@ -25,6 +28,7 @@ import org.springframework.ai.reader.TextReader;
 import org.springframework.ai.transformer.splitter.TokenTextSplitter;
 import org.springframework.ai.vectorstore.SimpleVectorStore;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -33,7 +37,14 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.core.io.Resource;
 
+/**
+ * @author yHong
+ * @version 1.0
+ * @since 2025/4/15 16:45
+ */
 @SpringBootApplication
+@Slf4j
+@MapperScan("com.alibaba.cloud.ai.example.dcg.server.mapper")
 public class Application {
 
 	private static final Logger logger = LoggerFactory.getLogger(Application.class);
@@ -48,17 +59,16 @@ public class Application {
 	@Bean
 	CommandLineRunner vectorIngestRunner(
 			@Value("${rag.source:classpath:rag/rag_friendly_classification.txt}") Resource ragSource,
-			EmbeddingModel embeddingModel,
 			VectorStore classificationVectorStore
 	) {
 		return args -> {
-			logger.info("🔄 正在向量化加载分类分级知识库...");
+			log.info("🔄 正在向量化加载分类分级知识库...");
 			var chunks = new TokenTextSplitter().transform(new TextReader(ragSource).read());
 			classificationVectorStore.write(chunks);
 
 			// 测试：相似性搜索一条
 			var results = classificationVectorStore.similaritySearch("人事档案数据");
-			results.forEach(doc -> logger.info("🔍 相似知识片段: {}", doc.getText()));
+			results.forEach(doc -> log.info("🔍 相似知识片段: {}", doc.getText()));
 		};
 	}
 
@@ -67,7 +77,7 @@ public class Application {
 	 */
 	@Bean
 	@Primary
-	public VectorStore classificationVectorStore(EmbeddingModel embeddingModel) {
+	public VectorStore classificationVectorStore(@Qualifier("dashscopeEmbeddingModel") EmbeddingModel embeddingModel) {
 		return SimpleVectorStore.builder(embeddingModel).build();
 	}
 

@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+server:
+  port: 8080
+
 spring:
   ai:
     chat:
@@ -23,7 +26,14 @@ spring:
         include-completion: true
         include-error-logging: true
     dashscope:
-      api-key: ${AI_DASHSCOPE_API_KEY}
+      api-key: sk-6b76c9f5936a4a5d8facb6daa5cd3b58
 
-server:
-  port: 8080
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://172.16.22.18:3306/test_hy?characterEncoding=utf8&connectTimeout=100000&socketTimeout=300000&autoReconnect=true&useUnicode=true&useSSL=false&serverTimezone=UTC
+    username: remote
+    password: "zUTk%@uvs5EFdDY@jSDd"
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
