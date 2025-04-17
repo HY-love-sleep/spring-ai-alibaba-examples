@@ -24,8 +24,11 @@ spring:
     import:
       - "optional:nacos:prompt-config.json"
   nacos:
+    server-addr:
     username: nacos
     password: nacos
+    namespace:
+    group: DEFAULT_GROUP
 
   ai:
     # 开启 nacos 的 prompt tmpl 监听功能
