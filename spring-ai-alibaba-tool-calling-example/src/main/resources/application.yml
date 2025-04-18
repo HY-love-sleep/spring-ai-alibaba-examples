@@ -14,5 +14,9 @@ spring:
           enabled: true
           api-key: ${WEATHER_API_KEY}
 
+        baidu:
+          map:
+            apiKey: 8j3In53BNTJGesDAqRZvVlkDJ0VayzK7
+
     dashscope:
-      api-key: ${AI_DASHSCOPE_API_KEY}
+      api-key: sk-6b76c9f5936a4a5d8facb6daa5cd3b58
