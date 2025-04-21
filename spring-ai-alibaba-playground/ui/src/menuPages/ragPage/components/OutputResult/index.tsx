@@ -11,7 +11,7 @@ const OutputResult = ({ messages, title }: OutputResultProps) => {
   const { styles } = useStyles();
 
   return (
-    <div className={styles.card}>
+    <div className={`${styles.card} ${styles.resultPanel}`}>
       <div className={styles.resultPanel}>
         <h2 className={styles.panelTitle}>{title}</h2>
         <div className={styles.messagesContainer}>

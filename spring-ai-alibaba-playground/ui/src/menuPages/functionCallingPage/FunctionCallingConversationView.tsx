@@ -8,7 +8,7 @@ import {
 } from "../../stores/conversation.store";
 import BasePage from "../components/BasePage";
 import { getMcp } from "../../api/mcp";
-import { mapStoredMessagesToUIMessages } from "../../utils";
+import { mapStoredMessagesToUIMessages, scrollToBottom } from "../../utils";
 // 导入通用气泡组件
 import ResponseBubble from "../components/ResponseBubble";
 import RequestBubble from "../components/RequestBubble";
@@ -28,6 +28,7 @@ const FunctionCallingConversationView = ({
   const [inputContent, setInputContent] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
+  const msgContainerRef = useRef<HTMLDivElement>(null);
 
   const {
     activeConversation,
@@ -69,6 +70,17 @@ const FunctionCallingConversationView = ({
       }
     }
   }, [activeConversation?.id, activeConversation?.messages]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      scrollToBottom(msgContainerRef.current);
+      clearTimeout(timer);
+    }, 200);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [activeConversation?.messages]);
 
   // 处理URL中的prompt参数
   useEffect(() => {
@@ -163,13 +175,24 @@ const FunctionCallingConversationView = ({
     });
 
     try {
-      // TODO: 服务端接口还没好
+      // TODO: 服务端接口还没完成，目前 mcp 和 function calling 似乎都一样
       const response = await getMcp(text, conversationId);
-      if (response.code !== 0 || !response.data) {
-        throw new Error(response.message || "Failed to get response");
+      // 服务端状态码并不统一，此处 0 并不代表成功
+      if (response.code !== 10000 || !response.data) {
+        throw new Error(response.message || "获取数据失败");
       }
+      // TODO: 目前接口还没定下来，这里的类型问题暂时忽略
+      // @ts-ignore
+      const isToolCall = response.data.toolName;
+      if (isToolCall) {
+        // TODO: 加入一个工具调用节点, 而且还需要是阻塞下方消息正文渲染的
+      }
+
+      // @ts-ignore
+      const responseText = response.data.toolResult as string;
+
       updateConversationMessages(
-        response.data,
+        responseText,
         "assistant",
         false,
         userTimestamp,
@@ -209,9 +232,12 @@ const FunctionCallingConversationView = ({
 
         {/* 右侧面板  */}
         <div className={styles.rightPanel}>
-          <div className={`${styles.card} ${styles.resultPanel}`}>
+          <div
+            className={`${styles.card} ${styles.resultPanel}`}
+            // ref={msgContainerRef}
+          >
             <h2 className={styles.panelTitle}>天气查询功能演示</h2>
-            <div className={styles.messagesContainer}>
+            <div className={styles.messagesContainer} ref={msgContainerRef}>
               {messages.length === 0 && !conversationId ? (
                 <ResponseBubble
                   content="你好！我可以帮你查询全球各地的天气信息。例如，你可以问我北京今天的天气怎么样？或上海明天会下雨吗？或纽约本周末的气温如何？请告诉我你想了解哪个地区的天气信息。"

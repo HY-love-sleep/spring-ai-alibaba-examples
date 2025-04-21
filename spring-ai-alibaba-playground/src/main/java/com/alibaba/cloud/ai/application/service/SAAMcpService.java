@@ -16,15 +16,23 @@
  */
 package com.alibaba.cloud.ai.application.service;
 
-import com.alibaba.cloud.ai.application.entity.result.Result;
-import com.alibaba.cloud.ai.application.entity.tools.ToolCallResp;
-import com.alibaba.cloud.ai.dashscope.api.DashScopeResponseFormat;
-import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatOptions;
+import java.io.IOException;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 
+import com.alibaba.cloud.ai.application.entity.mcp.McpServer;
+import com.alibaba.cloud.ai.application.entity.tools.ToolCallResp;
+import com.alibaba.cloud.ai.application.mcp.McpServerContainer;
+import com.alibaba.cloud.ai.application.mcp.McpServerUtils;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import org.springframework.ai.autoconfigure.mcp.client.properties.McpStdioClientProperties;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.ToolResponseMessage;
@@ -37,14 +45,10 @@ import org.springframework.ai.model.tool.ToolCallingManager;
 import org.springframework.ai.model.tool.ToolExecutionResult;
 import org.springframework.ai.tool.ToolCallbackProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Objects;
-
-import static org.springframework.ai.chat.client.advisor.AbstractChatMemoryAdvisor.CHAT_MEMORY_CONVERSATION_ID_KEY;
-import static org.springframework.ai.chat.client.advisor.AbstractChatMemoryAdvisor.CHAT_MEMORY_RETRIEVE_SIZE_KEY;
+import static com.alibaba.cloud.ai.application.mcp.McpServerUtils.getMcpLibsAbsPath;
 
 /**
  * @author brianxiadong
@@ -54,27 +58,39 @@ import static org.springframework.ai.chat.client.advisor.AbstractChatMemoryAdvis
 public class SAAMcpService {
 
 	private final ChatClient chatClient;
+
+	private final ObjectMapper objectMapper;
+
 	private final ToolCallbackProvider tools;
+
 	private final ToolCallingManager toolCallingManager;
+
+	private final McpStdioClientProperties mcpStdioClientProperties;
+
 	private static final Logger logger = LoggerFactory.getLogger(SAAMcpService.class);
 
 	public SAAMcpService(
+			ObjectMapper objectMapper,
 			ToolCallbackProvider tools,
 			SimpleLoggerAdvisor simpleLoggerAdvisor,
 			ToolCallingManager toolCallingManager,
-			MessageChatMemoryAdvisor messageChatMemoryAdvisor,
+			McpStdioClientProperties mcpStdioClientProperties,
 			@Qualifier("openAiChatModel") ChatModel chatModel
-	) {
+	) throws IOException {
+
+		this.objectMapper = objectMapper;
+		this.mcpStdioClientProperties = mcpStdioClientProperties;
 
 		// Initialize chat client with non-blocking configuration
 		this.chatClient = ChatClient.builder(chatModel)
 				.defaultAdvisors(
-//						messageChatMemoryAdvisor,
 						simpleLoggerAdvisor
 				).defaultTools(tools)
 				.build();
 		this.tools = tools;
 		this.toolCallingManager = toolCallingManager;
+
+		McpServerUtils.initMcpServerContainer(tools);
 	}
 
 	public ToolCallResp chat(String prompt) {
@@ -84,9 +100,8 @@ public class SAAMcpService {
 				.toolCallbacks(tools.getToolCallbacks())
 				.internalToolExecutionEnabled(false)
 				.build();
-		Prompt userPrompt = new Prompt(prompt, chatOptions);
 
-		ChatResponse response = chatClient.prompt(userPrompt)
+		ChatResponse response = chatClient.prompt(new Prompt(prompt, chatOptions))
 				.call().chatResponse();
 
 		logger.debug("ChatResponse: {}", response);
@@ -129,13 +144,15 @@ public class SAAMcpService {
 //				ToolResponseMessage toolResponseMessage = (ToolResponseMessage) toolExecutionResult.conversationHistory()
 //						.get(toolExecutionResult.conversationHistory().size() - 1);
 //				llmCallResponse = toolResponseMessage.getResponses().get(0).responseData();
-				ChatResponse finalResponse = chatClient.prompt().messages(toolExecutionResult.conversationHistory()).call().chatResponse();
-                if (finalResponse != null) {
-                    llmCallResponse = finalResponse.getResult().getOutput().getText();
-                }
+				ChatResponse finalResponse = chatClient.prompt().messages(toolExecutionResult.conversationHistory())
+						.call().chatResponse();
+				if (finalResponse != null) {
+					llmCallResponse = finalResponse.getResult().getOutput().getText();
+				}
 
-                StringBuilder sb = new StringBuilder();
-				toolExecutionResult.conversationHistory().stream().filter(message -> message instanceof ToolResponseMessage)
+				StringBuilder sb = new StringBuilder();
+				toolExecutionResult.conversationHistory().stream()
+						.filter(message -> message instanceof ToolResponseMessage)
 						.forEach(message -> {
 							ToolResponseMessage toolResponseMessage = (ToolResponseMessage) message;
 							toolResponseMessage.getResponses().forEach(tooResponse -> {
@@ -156,6 +173,36 @@ public class SAAMcpService {
 		}
 
 		return tcr;
+	}
+
+	public ToolCallResp run(String id, Map<String, String> envs, String prompt) throws IOException {
+
+		Optional<McpServer> runMcpServer = McpServerContainer.getServerById(id);
+		if (runMcpServer.isEmpty()) {
+			logger.error("McpServer not found, id: {}", id);
+			return ToolCallResp.TCR();
+		}
+
+		String runMcpServerName = runMcpServer.get().getName();
+		var mcpServerConfig = McpServerUtils.getMcpServerConfig();
+		McpStdioClientProperties.Parameters parameters = new McpStdioClientProperties.Parameters(
+				mcpServerConfig.getMcpServers().get(runMcpServerName).command(),
+				mcpServerConfig.getMcpServers().get(runMcpServerName).args(),
+				envs
+		);
+
+		if (parameters.command().startsWith("java")) {
+			String oldMcpLibsPath = McpServerUtils.getLibsPath(parameters.args());
+			String rewriteMcpLibsAbsPath = getMcpLibsAbsPath(McpServerUtils.getLibsPath(parameters.args()));
+
+			parameters.args().remove(oldMcpLibsPath);
+			parameters.args().add(rewriteMcpLibsAbsPath);
+		}
+
+		String mcpServerConfigJSON = objectMapper.writeValueAsString(mcpServerConfig);
+		mcpStdioClientProperties.setServersConfiguration(new ByteArrayResource(mcpServerConfigJSON.getBytes()));
+
+		return chat(prompt);
 	}
 
 }

@@ -8,7 +8,7 @@ import {
 } from "../../stores/conversation.store";
 import BasePage from "../components/BasePage";
 import { getRag } from "../../api/rag";
-import { mapStoredMessagesToUIMessages } from "../../utils";
+import { mapStoredMessagesToUIMessages, scrollToBottom } from "../../utils";
 import ResponseBubble from "../components/ResponseBubble";
 import RequestBubble from "../components/RequestBubble";
 import { RagUiMessage } from "./types";
@@ -25,7 +25,7 @@ const RagConversationView = ({ conversationId }: RagConversationViewProps) => {
   const [inputContent, setInputContent] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
-
+  const msgContainerRef = useRef<HTMLDivElement>(null);
   const {
     activeConversation,
     chooseActiveConversation,
@@ -84,6 +84,17 @@ const RagConversationView = ({ conversationId }: RagConversationViewProps) => {
     }
   }, [location.search, activeConversation]);
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      scrollToBottom(msgContainerRef.current);
+      clearTimeout(timer);
+    }, 200);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [activeConversation?.messages]);
+
   const updateConversationMessages = (
     messageContent: string,
     role: "assistant",
@@ -104,7 +115,23 @@ const RagConversationView = ({ conversationId }: RagConversationViewProps) => {
       assistantMessage,
     ])[0];
 
-    setMessages((prev) => [...prev, assistantUiMessage]);
+    setMessages((prev) => {
+      // 找到最后一个非用户消息
+      let lastNonUserIndex = -1;
+      for (let i = prev.length - 1; i >= 0; i--) {
+        if (prev[i].sender !== "user") {
+          lastNonUserIndex = i;
+          break;
+        }
+      }
+      if (lastNonUserIndex === -1) {
+        return [...prev, assistantUiMessage];
+      }
+      // 替换最后一个非用户消息
+      const newMessages = [...prev];
+      newMessages[lastNonUserIndex] = assistantUiMessage;
+      return newMessages;
+    });
 
     const existingUserMessage = activeConversation.messages.find(
       (msg) => msg.timestamp === userTimestamp && msg.role === "user"
@@ -152,12 +179,14 @@ const RagConversationView = ({ conversationId }: RagConversationViewProps) => {
     });
 
     try {
+      let accumulatedText = "";
       const response = await getRag(
         text,
         (value) => {
           const chunk = new TextDecoder().decode(value);
+          accumulatedText += chunk;
           updateConversationMessages(
-            chunk,
+            accumulatedText,
             "assistant",
             false,
             userTimestamp,
@@ -202,7 +231,10 @@ const RagConversationView = ({ conversationId }: RagConversationViewProps) => {
         </div>
 
         <div className={styles.rightPanel}>
-          <div className={`${styles.card} ${styles.resultPanel}`}>
+          <div
+            className={`${styles.card} ${styles.resultPanel}`}
+            ref={msgContainerRef}
+          >
             <h2 className={styles.panelTitle}>RAG功能演示</h2>
             <div className={styles.messagesContainer}>
               {messages.length === 0 && !conversationId ? (

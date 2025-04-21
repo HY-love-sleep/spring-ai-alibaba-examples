@@ -36,7 +36,6 @@ export const useStyles = createStyles(({ token, css }) => {
       background: ${token.colorBgContainer};
       border-radius: ${token.borderRadiusLG}px;
       box-shadow: ${token.boxShadow};
-      background-color: "red";
       padding: 16px;
       display: flex;
       flex-direction: column;
@@ -101,6 +100,7 @@ export const useStyles = createStyles(({ token, css }) => {
       display: flex;
       flex-direction: column;
       gap: 12px;
+      background-color: "red";
     `,
     emptyMessages: css`
       display: flex;

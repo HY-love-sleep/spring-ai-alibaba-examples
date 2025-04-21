@@ -24,7 +24,6 @@ import java.net.URL;
 import java.util.List;
 
 import com.alibaba.cloud.ai.application.utils.FilesUtils;
-import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatModel;
 import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatOptions;
 import com.alibaba.cloud.ai.dashscope.chat.MessageFormat;
 import com.alibaba.cloud.ai.dashscope.image.DashScopeImageOptions;
@@ -46,6 +45,8 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.MimeTypeUtils;
 import org.springframework.web.multipart.MultipartFile;
+
+import static com.alibaba.cloud.ai.dashscope.common.DashScopeApiConstants.MESSAGE_FORMAT;
 
 /**
  * @author yuluo
@@ -90,7 +91,7 @@ public class SAAImageService {
 						new FileSystemResource(filePath)
 				)
 		);
-		message.getMetadata().put(DashScopeChatModel.MESSAGE_FORMAT, MessageFormat.IMAGE);
+		message.getMetadata().put(MESSAGE_FORMAT, MessageFormat.IMAGE);
 
 		List<ChatResponse> response = daschScopeChatClient.prompt(
 						new Prompt(

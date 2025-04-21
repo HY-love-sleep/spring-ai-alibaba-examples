@@ -1,18 +1,18 @@
 /*
-* Copyright 2024 the original author or authors.
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*      https://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
+ * Copyright 2024 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 
 package com.alibaba.cloud.ai.example.rag.demo;
@@ -25,17 +25,17 @@ import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.document.DocumentReader;
 import org.springframework.ai.reader.pdf.PagePdfDocumentReader;
+import org.springframework.ai.reader.tika.TikaDocumentReader;
 import org.springframework.ai.transformer.splitter.TokenTextSplitter;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.ResponseEntity;
+import org.springframework.util.StringUtils;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import reactor.core.publisher.Flux;
 
 import java.io.IOException;
@@ -43,8 +43,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 /**
- *
- * @author WANG,ZHEN
+ * @author WANG, ZHEN
  * @since 1.0.0-M3
  */
 @RestController
@@ -82,6 +81,54 @@ public class Demo {
         // 3. create embedding and store to vector store
         vectorStore.add(splitDocuments);
     }
+
+    /**
+     * Receive any long text, split it and write it into a vector store
+     */
+    @GetMapping("/rag/importText")
+    public ResponseEntity<String> insertText(@RequestParam("text") String text) {
+        // 1.parameter verification
+        if (!StringUtils.hasText(text)){
+            return ResponseEntity.badRequest().body("Please enter text");
+        }
+        // 2.parse document
+        List<Document> documents = List.of(new Document(text));
+
+        // 3.Splitting Text
+        List<Document> splitDocuments = new TokenTextSplitter().apply(documents);
+
+        // 4.create embedding and store to vector store
+        vectorStore.add(splitDocuments);
+        // 5.return success prompt
+        String msg = String.format("successfully inserted %d text fragments into vector store", splitDocuments.size());
+        return ResponseEntity.ok(msg);
+    }
+
+    /**
+     * read and write multiple files and write it into a vector store
+     * @param file
+     * @return
+     */
+    @PostMapping(value = "/rag/importFile", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<String> insertFiles( @RequestPart(value = "file", required = false) MultipartFile file) {
+        // 1. file verification
+        if (file == null || file.isEmpty()) {
+            return ResponseEntity.badRequest().body("必须上传非空的文件");
+        }
+        // 2. parse files
+        List<Document> docs = new TikaDocumentReader(file.getResource()).get();
+
+        // 3. Splitting Text
+        List<Document> splitDocs = new TokenTextSplitter().apply(docs);
+
+        // 4. create embedding and store to vector store
+        vectorStore.add(splitDocs);
+
+        // 5.return success prompt
+        String msg = String.format("successfully inserted %d text fragments into vector store", splitDocs.size());
+        return ResponseEntity.ok(msg);
+    }
+
     @GetMapping(value = "/rag", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<ChatResponse> generate(@RequestParam(value = "message",
             defaultValue = "how to get start with spring ai alibaba?") String message) throws IOException {
