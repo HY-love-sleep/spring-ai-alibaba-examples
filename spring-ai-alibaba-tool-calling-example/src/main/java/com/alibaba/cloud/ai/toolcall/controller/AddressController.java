@@ -44,7 +44,7 @@ public class AddressController {
                                    @RequestParam(value = "facilityType", defaultValue = "bank") String facilityType) throws JsonProcessingException {
         MapSearchService.Request query = new MapSearchService.Request(address, facilityType);
         return dashScopeChatClient.prompt(new ObjectMapper().writeValueAsString(query)).tools("baiDuMapGetAddressInformationFunction").call().content();
-        
+
     }
 
 }
