@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: spring-ai-alibaba-nacos-mcp-example
+  ai:
+    mcp:
+      server:
+        name: webmvc-mcp-server
+        version: 1.0.0
+        type: SYNC
+    dashscope:
+      api-key: ${AI_DASHSCOPE_API_KEY}
+      chat:
+        options:
+          model: qwen-max-latest
+
+    alibaba:
+      mcp:
+        nacos:
+          enabled: true
+          server-addr:
+          service-namespace: public
+          service-group: DEFAULT_GROUP
+          username:
+          password:
+
+server:
+  port: 8080

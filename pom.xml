@@ -72,7 +72,8 @@
 		<module>spring-ai-alibaba-more-platform-and-model-example</module>
 		<module>spring-ai-alibaba-chat-memory-example</module>
 		<module>spring-ai-alibaba-usecase-example</module>
-	</modules>
+        <module>spring-ai-alibaba-nacos-mcp-example</module>
+    </modules>
 
 	<dependencyManagement>
 		<dependencies>
