@@ -43,4 +43,5 @@ public class ToolCallingApplication {
                 .defaultAdvisors(new SimpleLoggerAdvisor())
                 .build();
     }
+
 }
