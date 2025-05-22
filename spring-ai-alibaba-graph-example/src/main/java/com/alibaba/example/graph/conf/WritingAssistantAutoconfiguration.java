@@ -21,6 +21,7 @@ package com.alibaba.example.graph.conf;
 import com.alibaba.cloud.ai.graph.*;
 import com.alibaba.example.graph.dispatcher.FeedbackDispatcher;
 import com.alibaba.example.graph.node.RewordingNode;
+import com.alibaba.example.graph.node.StreamingSummarizerNode;
 import com.alibaba.example.graph.node.SummarizerNode;
 import com.alibaba.example.graph.node.SummaryFeedbackClassifierNode;
 import com.alibaba.example.graph.node.TitleGeneratorNode;
@@ -62,7 +63,7 @@ public class WritingAssistantAutoconfiguration {
 		};
 
 		StateGraph graph = new StateGraph("Writing Assistant with Feedback Loop", stateFactory.create())
-			.addNode("summarizer", node_async(new SummarizerNode(chatClient)))
+			.addNode("summarizer", node_async(new StreamingSummarizerNode(chatClient)))
 			.addNode("feedback_classifier", node_async(new SummaryFeedbackClassifierNode(chatClient, "summary")))
 			.addNode("reworder", node_async(new RewordingNode(chatClient)))
 			.addNode("title_generator", node_async(new TitleGeneratorNode(chatClient)))

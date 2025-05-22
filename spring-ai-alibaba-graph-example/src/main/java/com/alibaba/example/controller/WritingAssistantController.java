@@ -20,10 +20,17 @@ package com.alibaba.example.controller;
 
 import com.alibaba.cloud.ai.graph.CompiledGraph;
 import com.alibaba.cloud.ai.graph.GraphStateException;
+import com.alibaba.cloud.ai.graph.NodeOutput;
+import com.alibaba.cloud.ai.graph.RunnableConfig;
 import com.alibaba.cloud.ai.graph.StateGraph;
+import com.alibaba.cloud.ai.graph.streaming.StreamingOutput;
+import org.bsc.async.AsyncGenerator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.FluxSink;
 
 import java.util.Map;
 
@@ -52,6 +59,29 @@ public class WritingAssistantController {
 		var resultFuture = compiledGraph.invoke(Map.of("original_text", inputText));
 		var result = resultFuture.get();
 		return result.data();
+	}
+
+	@GetMapping(path = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+	public Flux<String> writeStream(@RequestParam("text") String input) {
+		Map<String, Object> inputs = Map.of("original_text", input);
+
+		RunnableConfig cfg = RunnableConfig.builder()
+				.streamMode(CompiledGraph.StreamMode.VALUES)
+				.build();
+
+		AsyncGenerator<NodeOutput> gen = compiledGraph.stream(inputs, cfg);
+
+		return Flux.create(sink -> {
+			gen.forEachAsync(nodeOut -> {
+				if ("summarizer".equals(nodeOut.node())) {
+					String chunk = ((StreamingOutput) nodeOut).chunk();
+					sink.next(chunk);
+				}
+			}).whenComplete((v, err) -> {
+				if (err != null) sink.error(err);
+				else sink.complete();
+			});
+		}, FluxSink.OverflowStrategy.BUFFER);
 	}
 
 }
