@@ -21,34 +21,37 @@ import java.util.Map;
 @RestController
 @RequestMapping("/stream")
 public class StreamController {
+    private final CompiledGraph graph;
 
-    private final CompiledGraph compiledGraph;
-
-    public StreamController(@Qualifier("streamGraph") StateGraph g)
-            throws GraphStateException {
-        this.compiledGraph = g.compile();
+    public StreamController(@Qualifier("streamGraph") StateGraph g) throws GraphStateException {
+        this.graph = g.compile();
     }
 
     @GetMapping(path = "/write", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public Flux<String> stream(@RequestParam("text") String input) {
-        Map<String,Object> inputs = Map.of("original_text", input);
-
-        RunnableConfig cfg = RunnableConfig.builder()
+    public Flux<String> stream(@RequestParam String text) {
+        var inputs = Map.<String,Object>of("original_text", text);
+        var cfg    = RunnableConfig.builder()
                 .streamMode(CompiledGraph.StreamMode.VALUES)
                 .build();
 
-        AsyncGenerator<NodeOutput> gen = compiledGraph.stream(inputs, cfg);
+        AsyncGenerator<NodeOutput> gen = graph.stream(inputs, cfg);
 
         return Flux.create(sink -> {
-            gen.forEachAsync(nodeOut -> {
-                // only when it really is a chunk:
-                if (nodeOut instanceof StreamingOutput so
-                        && "stream_summarizer".equals(so.node())) {
-                    sink.next(so.chunk());
+            gen.forEachAsync(out -> {
+                String id = out.node();                                // :contentReference[oaicite:0]{index=0}
+                if ("stream_summarizer".equals(id)) {
+                    // StreamingOutput.chunk() carries each LLM chunk
+                        String chunk = ((StreamingOutput) out).chunk();    // :contentReference[oaicite:1]{index=1}
+                    sink.next("[摘要流] " + chunk);
+                }
+                else if ("title_generator".equals(id)) {
+                    // once title node fires, its result sits in state under "title"
+                    String title = (String) out.state().data().get("title");
+                    sink.next("[标题] " + title);
                 }
             }).whenComplete((v, err) -> {
                 if (err != null) sink.error(err);
-                else           sink.complete();
+                else            sink.complete();
             });
         }, FluxSink.OverflowStrategy.BUFFER);
     }
