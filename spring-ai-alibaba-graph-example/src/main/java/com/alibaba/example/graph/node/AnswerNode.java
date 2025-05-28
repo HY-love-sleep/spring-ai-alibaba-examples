@@ -10,17 +10,15 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * 将 AnswerNodeData 中的模板渲染为最终的 answer 字符串。
+ * Render the template in AnswerNodeData into the final answer string.
  * <p>
- * 支持在模板中使用 {{varName}} 占位，从全局状态中读取对应的值替换。
+ * Support using {{varName}} placeholders in templates to read and replace the corresponding values from the global state.
  * </p>
  */
 public class AnswerNode implements NodeAction {
 
-    /** 输出 key，固定为 "answer" */
     public static final String OUTPUT_KEY = "answer";
 
-    /** 模板字符串，例如 "The result is {{invokeLLM}}" */
     private final String answerTemplate;
 
     private AnswerNode(String answerTemplate) {
@@ -29,7 +27,6 @@ public class AnswerNode implements NodeAction {
 
     @Override
     public Map<String, Object> apply(OverAllState state) {
-        // 简单的 {{var}} 替换
         String rendered = this.answerTemplate;
         Pattern p = Pattern.compile("\\{\\{(.+?)}}");
         Matcher m = p.matcher(rendered);
@@ -46,18 +43,12 @@ public class AnswerNode implements NodeAction {
         return out;
     }
 
-    /** 构造器 */
     public static Builder builder() {
         return new Builder();
     }
 
     public static class Builder {
         private String answerTemplate;
-
-        /**
-         * 设置 answer 模板
-         * @param tpl 支持 {{var}} 占位
-         */
         public Builder answer(String tpl) {
             this.answerTemplate = tpl;
             return this;
