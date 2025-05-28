@@ -1,5 +1,5 @@
 server:
-  port: 8080
+  port: 18080
 
 spring:
   application:
@@ -7,7 +7,7 @@ spring:
 
   ai:
     dashscope:
-      api-key: ${AI_DASHSCOPE_API_KEY}
+      api-key: sk-6b76c9f5936a4a5d8facb6daa5cd3b58
       chat:
         options:
           model: qwen-plus

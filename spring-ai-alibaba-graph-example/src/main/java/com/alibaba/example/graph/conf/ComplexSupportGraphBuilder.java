@@ -14,6 +14,8 @@ import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.tool.resolution.ToolCallbackResolver;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.context.annotation.Bean;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.http.HttpMethod;
@@ -43,7 +45,7 @@ public class ComplexSupportGraphBuilder {
                     "input",
                     "attachments",
                     "docs",
-                    "parameters",
+                    "parameterParsing_output",
                     "classifier_output",
                     "retrieved_docs",
                     "filtered_docs",
@@ -62,7 +64,7 @@ public class ComplexSupportGraphBuilder {
 
         // —— 1. Document extraction ——
         DocumentExtractorNode extractNode = DocumentExtractorNode.builder()
-                .fileList(List.of("data/manual.md"))
+                .fileList(List.of("data/manual.txt"))
                 .paramsKey("attachments")
                 .outputKey("docs")
                 .build();
@@ -84,14 +86,15 @@ public class ComplexSupportGraphBuilder {
                 .chatClient(chatClient)
                 .inputTextKey("input")
                 .categories(List.of("售后", "技术支持", "投诉", "咨询"))
-                .classificationInstructions(
-                        List.of("请将用户诉求分类到最合适的类别"))
+                .classificationInstructions(List.of(
+                        "请仅返回最合适的类别名称String类型，例如：售后、运输、产品质量、其他；不要多余的标记或格式。 正确返回结果： 售后 "
+                ))
                 .build();
         graph.addNode("classify", AsyncNodeAction.node_async(qcNode));
 
         // —— 4. Knowledge Retrieval ——
         KnowledgeRetrievalNode krNode = KnowledgeRetrievalNode.builder()
-                .userPromptKey("input")
+                .userPromptKey("classifier_output")
                 .vectorStore(vectorStore)
                 .topK(5)
                 .similarityThreshold(0.5)
@@ -110,13 +113,13 @@ public class ComplexSupportGraphBuilder {
 //        graph.addNode("filterDocs", AsyncNodeAction.node_async(listOp));
 
         // —— 6. call http endpoint ——
+        // in this case, you should create a mock http endpoint to test this node, and change http_response to String
         HttpNode httpNode = HttpNode.builder()
-                .webClient(WebClient.create())
-                .method(HttpMethod.POST)
-                .url("http://localhost:8080/api/graph/mock/http")
-                .body(HttpNode.HttpRequestNodeBody.from(
-                        "{\"ticketId\":\"${ticketId}\",\"category\":\"${classifier_output}\"}"
-                ))
+                .webClient(WebClient.builder().build())
+                .method(HttpMethod.GET)
+                .url("http://localhost:18080/api/graph/mock/http?"
+                        +"ticketId=12345"
+                        + "&category=售后")
                 .outputKey("http_response")
                 .build();
         graph.addNode("syncTicket", AsyncNodeAction.node_async(httpNode));
@@ -125,8 +128,8 @@ public class ComplexSupportGraphBuilder {
         LlmNode llmNode = LlmNode.builder()
                 .chatClient(chatClient)
                 .systemPromptTemplate("你是客服助手，请基于以下信息撰写回复：")
-                .userPromptTemplateKey("input")
-                .messagesKey("filtered_docs")
+                .userPromptTemplateKey("http_response")
+                .messagesKey("user_prompt")
                 .outputKey("llm_response")
                 .build();
         graph.addNode("invokeLLM", AsyncNodeAction.node_async(llmNode));
@@ -143,9 +146,8 @@ public class ComplexSupportGraphBuilder {
         // —— 9. human callback ——
         HumanNode humanNode = new HumanNode(
                 "conditioned",
-                st -> /* 当 tool_result 包含 “ERROR” 时中断交给人工 */
+                st ->
                         st.value("tool_result").map(r -> r.toString().contains("ERROR")).orElse(false),
-                /* 审核通过后把最终内容写入 answer */
                 st -> Map.of("answer", st.value("tool_result").orElse("").toString())
         );
         graph.addNode("humanReview", AsyncNodeAction.node_async(humanNode));

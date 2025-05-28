@@ -3,6 +3,7 @@ package com.alibaba.example.controller;
 import com.alibaba.cloud.ai.graph.CompiledGraph;
 import com.alibaba.cloud.ai.graph.OverAllState;
 import com.alibaba.cloud.ai.graph.exception.GraphStateException;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,12 +21,6 @@ public class GraphController {
         this.graph = graph;
     }
 
-    /**
-     * 接口：执行图，返回所有状态变量
-     * POST /api/graph/invoke
-     * Content-Type: application/json
-     * Body: { "input": "用户的原始文本" }
-     */
     @PostMapping("/invoke")
     public ResponseEntity<Map<String, Object>> invoke(
             @RequestBody Map<String, Object> inputs) throws GraphStateException {
@@ -36,8 +31,15 @@ public class GraphController {
         return ResponseEntity.ok(resultFuture.get().data());
     }
 
-    @PostMapping("/mock/http")
-    public ResponseEntity<String> mock(@RequestParam("input") String input) {
-        return ResponseEntity.ok("httpNode mock:" + input);
+    @GetMapping(path = "/mock/http")
+    public String mock(@RequestParam("ticketId") String ticketId,
+                                       @RequestParam("category") String category) {
+        Map<String, String> resp = Map.of(
+                "status",   "OK",
+                "ticketId", ticketId,
+                "category", category
+        );
+        return resp.toString();
     }
+
 }

@@ -11,18 +11,20 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.core.io.Resource;
 
+import java.util.List;
+
 @Configuration
 class VectorStoreConfig {
     /**
      * Define a default VectorStore bean so that the KnowledgeRetrievalNode can get it
      */
 
-    @Value("${rag.source:classpath:data/manual.md}")
+    @Value("${rag.source:classpath:data/manual.txt}")
     Resource ragSource;
 
     @Bean
     @Primary
-    public VectorStore cuctomVectorStore(EmbeddingModel embeddingModel) {
+    public VectorStore customVectorStore(EmbeddingModel embeddingModel) {
 
         var chunks = new TokenTextSplitter().transform(new TextReader(ragSource).read());
 
