@@ -42,29 +42,15 @@ public class GraphBuilder {
 
         // —— CodeNode [1733195173395] ——
         CodeExecutorNodeAction codeNode1 = CodeExecutorNodeAction.builder().codeExecutor(codeExecutor) // 注入的 CodeExecutor Bean
-                .codeLanguage("java")
+                .codeLanguage("python")
                 .code("""
-                        package com.example.scripts;
-                        
-                        import java.util.HashMap;
-                        import java.util.Map;
-                        
-                        public class Script {
-                            /**
-                             * 约定：CodeExecutorNodeAction 会把 params.values()
-                             * 按顺序当作 args 传入。
-                             */
-                            public static Map<String, Object> main(String[] args) {
-                                String a = args[0];
-                                String b = args[1];
-                                Map<String, Object> result = new HashMap<>();
-                                result.put("result", a + b);
-                                return result;
+                        def main(arg1: str, arg2: str) -> dict:
+                            return {
+                                "result": arg1 + arg2,
                             }
-                        }
                         """)
                 .config(codeExecutionConfig) // 注入的 CodeExecutionConfig Bean
-                .params(Map.of("arg1", "1", "arg2", "2")).outputKey("codeNode1_output").build();
+                .params(Map.of("key1", "args1", "key2", "args2")).outputKey("codeNode1_output").build();
         stateGraph.addNode("codeNode1", AsyncNodeAction.node_async(codeNode1));
 
         // add edges
