@@ -10,10 +10,14 @@ spring:
   application:
     name: mcp
   main:
-    web-application-type: none
+    web-application-type: reactive
   ai:
-    dashscope:
-      api-key: ${AI_DASHSCOPE_API_KEY}
+    openai:
+      api-key:
+      base-url: https://api.chatanywhere.tech
+      chat:
+        options:
+          model: gpt-4o-mini
     mcp:
       client:
         toolcallback:
@@ -21,7 +25,7 @@ spring:
         streamable:
           connections:
             server1:
-              url: http://env-cvpjbjem1hkjat42sk4g-ap-southeast-1.alicloudapi.com/mcp-quark
+              url: http://localhost:3000/mcp
   mandatory-file-encoding: UTF-8
 
 # 调试日志
@@ -32,6 +36,3 @@ logging:
         client: DEBUG
         spec: DEBUG
 
-ai:
-  user:
-    input: 北京的天气如何？
