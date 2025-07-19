@@ -15,11 +15,4 @@ public class ChatClientConfig {
     ) {
         return new AsyncMcpToolCallback(mcpAsyncClient, startNotificationTool);
     }
-
-//    @Bean
-//    public org.springframework.ai.chat.client.ChatClient chatClient(
-//            org.springframework.ai.chat.client.ChatClient.Builder builder,
-//            AsyncMcpToolCallback mcpToolCallback) {
-//        return builder.defaultToolCallbacks(mcpToolCallback).build();
-//    }
 }

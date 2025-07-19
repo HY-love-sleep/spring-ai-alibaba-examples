@@ -13,7 +13,7 @@ spring:
     web-application-type: reactive
   ai:
     openai:
-      api-key:
+      api-key: sk-LwAUCbjFdDHuaQ3gUNhzioBLSlP5Qq6ixa1nIkTf6Sqw7BSJ
       base-url: https://api.chatanywhere.tech
       chat:
         options:
@@ -25,7 +25,7 @@ spring:
         streamable:
           connections:
             server1:
-              url: http://localhost:3000/mcp
+              url: http://localhost:3000/mcp/
   mandatory-file-encoding: UTF-8
 
 # 调试日志

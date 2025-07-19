@@ -21,7 +21,10 @@ public class ChatController {
 
     @GetMapping(value = "/chat/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<ServerSentEvent<String>> stream(@RequestParam("message") String message) {
-        // ChatClient会自动判断是否调用 MCP 工具
+        /**
+         * messages:
+         * 请帮我用 start-notification-stream 工具，每隔 1 秒推送 5 次消息，调用人叫 hy
+         */
         return chatClient.prompt()
                 .user(message)
                 .stream()

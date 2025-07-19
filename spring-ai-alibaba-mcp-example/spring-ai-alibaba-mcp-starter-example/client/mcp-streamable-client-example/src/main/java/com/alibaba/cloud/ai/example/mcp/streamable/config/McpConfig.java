@@ -15,6 +15,11 @@ public class McpConfig {
     @Value("${spring.ai.mcp.client.streamable.connections.server1.url}")
     private String mcpServerUrl;
 
+    /**
+     * a streamable http transport
+     * @param objectMapper
+     * @return
+     */
     @Bean
     public WebClientStreamableHttpTransport mcpTransport(ObjectMapper objectMapper) {
         return WebClientStreamableHttpTransport.builder(WebClient.builder())
@@ -30,9 +35,13 @@ public class McpConfig {
         return McpClient.async(transport).build();
     }
 
+    /**
+     * Corresponding mcp python sdk :
+     * examples/servers/simple-streamablehttp-stateless/mcp_simple_streamablehttp_stateless/server.py
+     */
     @Bean
     public McpSchema.Tool startNotificationTool() {
-        // 与py server list_tools保持一致，schema直接用json字符串
+        // Maintain consistency py server list_tools
         String inputSchema = """
                     {
                       "type": "object",
